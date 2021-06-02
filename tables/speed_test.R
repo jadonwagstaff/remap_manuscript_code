@@ -1,4 +1,8 @@
 library(tidyverse)
+library(sf)
+library(rester)
+library(maps)
+library(remap)
 
 # 50-year snow load data with "V" column used for cross validation
 set.seed(42)
@@ -94,7 +98,7 @@ times[[5]] <- Sys.time()
 
 save(times, file = "times.RData")
 
-# Process times into geographic column of Table 3
+# Process times into geographic column of Table 2
 for (i in 2:length(times)) {
   if (i %in% c(2, 3)) {
     time <- (nrow(grd) / nrow(grd_sample)) * 
@@ -170,7 +174,7 @@ times2[[5]] <- Sys.time()
 
 save(times2, file = "times2.RData")
 
-# Process times into geographic column of Table 3
+# Process times into geographic column of Table 2
 for (i in 4:length(times2)) {
   if (i == 2) {
     print((nrow(grd) / nrow(grd_sample)) * difftime(times2[[i]], times2[[i-1]], units = "hours"))
@@ -180,7 +184,7 @@ for (i in 4:length(times2)) {
 }
 
 
-# Process times into projected column of Table 3
+# Process times into projected column of Table 2
 for (i in 2:length(times2)) {
   if (i %in% c(2, 3)) {
     time <- (nrow(grd) / nrow(grd_sample)) * 

@@ -1,5 +1,10 @@
 library(tidyverse)
+library(sf)
+library(raster)
+library(maps)
 library(mgcv)
+library(automap)
+library(remap)
 
 
 # Load data
@@ -190,45 +195,6 @@ predict.krig <- function(object, data) {
 }
 
 
-
-# PRISM functions
-# ==============================================================================
-prism_function <- function(data) {
-  ubound <- max(data$WESD)
-  
-  # just save the forumula and data
-  fml <- log(WESD) ~ ELEVATION
-  
-  data <- sf::as_Spatial(data)
-  
-  model <- list(data = data, fml = fml)
-  class(model) <- "prism"
-  
-  out <- list(model = model, ubound = ubound)
-  class(out) <- "bound"
-  
-  return(out)
-}
-
-predict.prism <- function(object, data) {
-  if (nrow(data) != 0) {
-    data <- sf::as_Spatial(data)
-    
-    # Suppressing warnings from sp::proj4string which are just letting the user
-    # know that proj4string is outdated. This doesn't affect the output
-    pkgcond::suppress_warnings(
-      out <- snowload::prism(formula = object$fml, 
-                             newdata = data, 
-                             locations = object$data),
-      pattern = "CRS object has comment, which is lost in output"
-    )
-    
-    return(out)
-    
-  } else return(NULL)
-}
-
-
 # Make distance matrix and evaluation data frame
 # ==============================================================================
 dists2 <- remap::redist(apr1, ws_simp, HUC2)
@@ -238,10 +204,10 @@ dists4 <- remap::redist(apr1, ws_simp, HUC4)
 # Do cross validation for different modeling approaches
 # ==============================================================================
 cv <- data.frame(
-  Model = rep("", 4),
-  State = rep(as.numeric(NA), 4),
-  HUC2 = rep(as.numeric(NA), 4),
-  HUC4 = rep(as.numeric(NA), 4),
+  Model = rep("", 3),
+  State = rep(as.numeric(NA), 3),
+  HUC2 = rep(as.numeric(NA), 3),
+  HUC4 = rep(as.numeric(NA), 3),
   stringsAsFactors = FALSE
 )
 
@@ -264,17 +230,12 @@ cv[2, 2] <- state_cv(krig_ut)
 cv[2, 3] <- regional_sp_cv(krig_ut, "HUC2", dists2)
 cv[2, 4] <- regional_sp_cv(krig_ut, "HUC4", dists4)
 
-cv[3, 1] <- "Prism"
-cv[3, 2] <- state_cv(prism_function)
-cv[3, 3] <- regional_sp_cv(prism_function, "HUC2", dists2)
-cv[3, 4] <- regional_sp_cv(prism_function, "HUC4", dists4)
-
-cv[4, 1] <- "OLS"
-cv[4, 2] <- state_cv(ols_ut, 
+cv[3, 1] <- "OLS"
+cv[3, 2] <- state_cv(ols_ut, 
                      formula = log(WESD) ~ ELEVATION)
-cv[4, 3] <- regional_sp_cv(ols_ut, "HUC2", dists2,
+cv[3, 3] <- regional_sp_cv(ols_ut, "HUC2", dists2,
                            formula = log(WESD) ~ ELEVATION)
-cv[4, 4] <- regional_sp_cv(ols_ut, "HUC4", dists4,
+cv[3, 4] <- regional_sp_cv(ols_ut, "HUC4", dists4,
                            formula = log(WESD) ~ ELEVATION)
 
 save(cv, file = "snowpack_methods.RData")

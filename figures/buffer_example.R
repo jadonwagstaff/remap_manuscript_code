@@ -1,4 +1,6 @@
 library(tidyverse)
+library(sf)
+library(nngeo)
 
 eco3_subset <- sf::read_sf("../data/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>%
   select(ECO3 = NA_L3CODE) %>%

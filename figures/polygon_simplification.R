@@ -1,4 +1,8 @@
 library(tidyverse)
+library(sf)
+library(maps)
+library(gridExtra)
+library(cowplot)
 
 # Get continental US shape file
 cont_us <- maps::map("state", plot = FALSE, fill = TRUE) %>%

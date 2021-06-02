@@ -1,5 +1,10 @@
 library(tidyverse)
+library(sf)
+library(raster)
+library(maps)
 library(mgcv)
+library(automap)
+library(remap)
 
 
 # Load data
@@ -130,47 +135,15 @@ predict.krig <- function(object, data) {
 
 
 
-# PRISM functions
-# ==============================================================================
-prism_function <- function(data) {
-  # just save the forumula and data
-  fml <- log(EVENT50) ~ ELEVATION
-  
-  data <- sf::as_Spatial(data)
-  
-  out <- list(data = data, fml = fml)
-  class(out) <- "prism"
-  
-  return(out)
-}
-
-predict.prism <- function(object, data) {
-  if (nrow(data) != 0) {
-    data <- sf::as_Spatial(data)
-    
-    # Suppressing warnings from sp::proj4string which are just letting the user
-    # know that proj4string is outdated. This doesn't affect the output
-    pkgcond::suppress_warnings(
-      out <- snowload::prism(formula = object$fml, 
-                             newdata = data, 
-                             locations = object$data),
-      pattern = "CRS object has comment, which is lost in output"
-    )
-  } else return(NULL)
-}
-
-
-
 # Do cross validation for different modeling approaches
 # ==============================================================================
 cv <- data.frame(
-  Model = rep("", 4),
-  National = rep(as.numeric(NA), 4),
-  Regional = rep(as.numeric(NA), 4),
+  Model = rep("", 3),
+  National = rep(as.numeric(NA), 3),
+  Regional = rep(as.numeric(NA), 3),
   stringsAsFactors = FALSE
 )
 
-#c("GAM", "OLS", "Kriging", "Prism", "IDW")
 # GAM
 cv[1, 1] <- "GAM"
 cv[1, 2] <- national_cv(mgcv::gam, 
@@ -186,14 +159,10 @@ cv[2, 1] <- "Kriging"
 cv[2, 2] <- national_cv(krig)
 cv[2, 3] <- regional_cv(krig)
 
-cv[3, 1] <- "Prism"
-cv[3, 2] <- national_cv(prism_function)
-cv[3, 3] <- regional_cv(prism_function)
-
-cv[4, 1] <- "OLS"
-cv[4, 2] <- national_cv(lm, 
+cv[3, 1] <- "OLS"
+cv[3, 2] <- national_cv(lm, 
                         formula = log(EVENT50) ~ ELEVATION)
-cv[4, 3] <- regional_cv(lm, 
+cv[3, 3] <- regional_cv(lm, 
                         formula = log(EVENT50) ~ ELEVATION)
 
 save(cv, file = "snowload_methods.RData")
