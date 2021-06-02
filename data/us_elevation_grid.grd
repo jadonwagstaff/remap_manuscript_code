@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2021-01-09 09:50:13
+[georeference]
+nrows=2996
+ncols=6948
+xmin=-124.812499999676
+ymin=24.4625000000003
+xmax=-66.9125000023947
+ymax=49.4291666656863
+projection=NA
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=1
+bandorder=BIL
+categorical=FALSE
+minvalue=-80
+maxvalue=4307
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=ELEVATION
