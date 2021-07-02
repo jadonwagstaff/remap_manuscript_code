@@ -4,6 +4,10 @@ Contains code used in the manuscript "**remap** Regionalized Models with
 Spatially Smooth Predictions". The code for remap is located at
 https://github.com/jadonwagstaff/remap.
 
+**Code Examples**
+
+Example code and data in the manuscript is available in the code_examples dataset.
+
 **Tables**
 
 * Table 1 is created using tables/snowload_methods.R
