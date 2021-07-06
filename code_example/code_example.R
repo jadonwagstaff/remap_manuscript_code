@@ -32,7 +32,14 @@ gm <- remap(loads,
              family = gaussian,
              progress = TRUE)
 
-summary(gm)
+gm
+
+head(names(gm$models), 3)
+
+class(gm$models[[1]])
+
+head(gm$regions, 3)
+
 
 
 
