@@ -20,8 +20,10 @@ Example code and data in the manuscript is available in the code_examples datase
 
 * Figures 1, 3, and 4 are created using figures/border_smoothing_figures.R
 * Figure 2 is created using figures/buffer_example.R
-* Figure 5 is created using figures/polygon_simplification.R
-* Figure 6 is created using figures/utah_regions.R
+* Figure 5 is created using figures/elevation_plot.R
+* Figure 6 is created using figures/polygon_simplification.R
+* Figure 7 is created using figures/utah_regions.R
+* Figure 8 is created using code_example/code_example.R
 
 **Author**
 
