@@ -6,6 +6,11 @@ library(mgcv)
 library(automap)
 library(remap)
 
+# Code was originally written before sf version 1.0.0. The new version uses 
+# S2 to calculate spherical geometries which introduces a whole host of bugs
+# into the code. Turning S2 off fixes these bugs.
+sf::sf_use_s2(FALSE)
+
 
 # Load data
 # ==============================================================================
@@ -37,12 +42,15 @@ eco3 <- sf::read_sf("../data/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>%
   filter(as.numeric(AREA) > 1e8) %>%
   dplyr::select(-AREA) %>%
   # only look at relevant regions
-  filter(ECO3 %in% sf::st_intersection(., cont_us)$ECO3)
+  filter(ECO3 %in% sf::st_intersection(., cont_us)$ECO3) %>%
+  sf::st_cast("MULTIPOLYGON")
 
-# Warns that st_simplify does not correctly simplify lon/lat data, this 
-# doesn't  matter for this problem and gives us a close enough approximation.
+# Simplification and distances needs to be shown with the new S2 calculations
+sf::sf_use_s2(TRUE)
 eco3_simp <- eco3 %>%
-  sf::st_simplify(dTolerance = 0.1)
+  sf::st_simplify(dTolerance = 10000) %>%
+  dplyr::filter(!sf::st_is_empty(.)) %>%
+  sf::st_cast("MULTIPOLYGON")
 
 # Make distance matrix
 eco3_dist <- remap::redist(loads, regions = eco3_simp, region_id = ECO3)

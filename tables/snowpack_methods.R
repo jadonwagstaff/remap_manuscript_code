@@ -6,6 +6,11 @@ library(mgcv)
 library(automap)
 library(remap)
 
+# Code was originally written before sf version 1.0.0. The new version uses 
+# S2 to calculate spherical geometries which introduces a whole host of bugs
+# into the code. Turning S2 off fixes these bugs.
+sf::sf_use_s2(FALSE)
+
 
 # Load data
 # ==============================================================================
@@ -43,10 +48,12 @@ ws <- rbind(
   dplyr::select(HUC4, HUC2)
 
 # Simplify watersheds
-# Warns that st_simplify does not correctly simplify lon/lat data, this doesn't
-# matter for this problem and gives us a close enough approximation.
+# Simplification and distances needs to be shown with the new S2 calculations
+sf::sf_use_s2(TRUE)
 ws_simp <- ws %>%
-  sf::st_simplify(dTolerance = .05) 
+  sf::st_simplify(dTolerance = 5000) %>%
+  dplyr::filter(!sf::st_is_empty(.)) %>%
+  sf::st_cast("MULTIPOLYGON")
 
 
 # General model building and evaluation functions
@@ -241,9 +248,9 @@ cv[3, 4] <- regional_sp_cv(ols_ut, "HUC4", dists4,
 save(cv, file = "snowpack_methods.RData")
 
 # Format and save file
-cv[, 2] <- round(cv[, 2], 2)
-cv[, 3] <- round(cv[, 3], 2)
-cv[, 4] <- round(cv[, 4], 2)
+cv[, 2] <- round(cv[, 2] * 100)
+cv[, 3] <- round(cv[, 3] * 100)
+cv[, 4] <- round(cv[, 4] * 100)
 write_csv(cv, "snowpack_methods.csv")
 
 

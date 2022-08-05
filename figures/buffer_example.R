@@ -2,6 +2,11 @@ library(tidyverse)
 library(sf)
 library(nngeo)
 
+# Code was originally written before sf version 1.0.0. The new version uses 
+# S2 to calculate spherical geometries which introduces a whole host of bugs
+# into the code. Turning S2 off fixes these bugs.
+sf::sf_use_s2(FALSE)
+
 eco3_subset <- sf::read_sf("../data/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>%
   select(ECO3 = NA_L3CODE) %>%
   filter(ECO3 %in% c("10.1.4", "10.1.6", "10.1.7", "6.2.14", 

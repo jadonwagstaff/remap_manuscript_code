@@ -10,16 +10,24 @@ library(remap)
 # Download data from https://github.com/jadonwagstaff/remap_manuscript_code/tree/master/code_example
 load("code_example_data.RData")
 
-# Warns that st_simplify does not correctly simplify lon/lat data, this 
-# doesn't  matter for this problem and gives us a close enough approximation.
+# Simplify polygons
 eco3_simp <- eco3 %>%
-  sf::st_simplify(dTolerance = 0.1)
+  sf::st_simplify(dTolerance = 10000) %>%
+  dplyr::filter(!sf::st_is_empty(.)) %>%
+  sf::st_cast("MULTIPOLYGON")
 
 # Make distance matrix
 eco3_dist <- redist(loads, regions = eco3_simp, region_id = ECO3, progress = TRUE)
 
 
 
+lmod <- remap(loads, 
+              regions = eco3_simp, region_id = ECO3,
+              buffer = 50, min_n = 150,
+              distances = eco3_dist,
+              model_function = stats::lm,
+              formula = log(EVENT50) ~ ELEVATION,
+              progress = TRUE)
 
 
 gm <- remap(loads, 
@@ -78,22 +86,25 @@ kg <- remap(loads,
             fml = log(EVENT50) ~ ELEVATION,
             progress = TRUE)
 
-loads_us <- loads %>%
-  sf::st_intersection(cont_us)
+loads_us <- sf::st_filter(loads, cont_us)
 
 kg_preds <- exp(predict(kg, loads_us, smooth = 25, progress = TRUE))
 
 all(dplyr::near(kg_preds, loads_us$EVENT50))
 
 
-# GAM prediction map
-gm_preds <- predict(gm, grd, smooth = 25, progress = TRUE)
+# Distances and predictions
+grd_dist <- redist(grd, regions = eco3_simp, region_id = ECO3,
+                   max_dist = 25, progress = TRUE)
+
+gm_preds <- predict(gm, grd, smooth = 25, distances = grd_dist, progress = TRUE)
+gm_preds <- exp(gm_preds)
 
 range(gm_preds)
-range(log(loads$EVENT50))
+range(loads$EVENT50)
 
-gm_preds[gm_preds > 3.7] <- 3.7
-gm_preds[gm_preds < -2.3] <- -2.3
+gm_preds[gm_preds > 40.2] <- 40.2
+gm_preds[gm_preds < 0.1] <- 0.1
 
 
 ggplot(cont_us) +
@@ -101,8 +112,40 @@ ggplot(cont_us) +
             aes(x = LONGITUDE, y = LATITUDE, fill = EVENT50)) +
   geom_sf(fill = NA, color = NA) +
   scale_fill_viridis_c(option = "inferno",
-                       breaks = c(-2.3, 0, 2, 3.7),
-                       labels = c("-2.3 (~0.1 kPa)", "0 (1 kPa)", 
-                                  "2 (~7 kPa)", "3.7 (~40 kPa)"),
-                       name = "Log 50-year event") +
+                       trans = "log10",
+                       breaks = c(0.1, 1, 7, 40),
+                       labels = c("0.1 kPa", "1 kPa", "7 kPa", "40 kPa"),
+                       name = "50-year event") +
   theme_void()
+
+
+# Utah snowpack data
+utsp2011 <- utapr1 %>%
+  dplyr::filter(YEAR == 2011) %>%
+  dplyr::mutate(WESD = WESD + 1)
+
+utlmod <- remap(utsp2011, 
+                regions = utws, region_id = HUC2,
+                buffer = 20, min_n = 30,
+                model_function = stats::lm,
+                formula = log(WESD) ~ ELEVATION,
+                progress = TRUE)
+
+utgm <- remap(utsp2011, 
+              regions = utws, region_id = HUC2,
+              buffer = 20, min_n = 30,
+              model_function = mgcv::gam,
+              formula = log(WESD) ~ s(ELEVATION, k = 5) +
+                s(LATITUDE, LONGITUDE, bs = 'sos', k = 20),
+              family = gaussian,
+              progress = TRUE)
+
+utkg <- remap(utsp2011, 
+              regions = utws, region_id = HUC2,
+              buffer = 20, min_n = 30,
+              model_function = krig,
+              fml = log(WESD) ~ ELEVATION,
+              progress = TRUE)
+
+
+

@@ -1,8 +1,13 @@
 library(tidyverse)
 library(sf)
-library(rester)
+library(raster)
 library(maps)
 library(remap)
+
+# Code was originally written before sf version 1.0.0. The new version uses 
+# S2 to calculate spherical geometries which introduces a whole host of bugs
+# into the code. Turning S2 off fixes these bugs.
+sf::sf_use_s2(FALSE)
 
 # 50-year snow load data with "V" column used for cross validation
 set.seed(42)
@@ -31,12 +36,16 @@ eco3 <- sf::read_sf("../data/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>%
   filter(as.numeric(AREA) > 1e8) %>%
   dplyr::select(-AREA) %>%
   # only look at relevant regions
-  filter(ECO3 %in% sf::st_intersection(., cont_us)$ECO3)
+  filter(ECO3 %in% sf::st_intersection(., cont_us)$ECO3) %>%
+  sf::st_cast("MULTIPOLYGON")
 
-# Warns that st_simplify does not correctly simplify lon/lat data, this 
-# doesn't  matter for this problem and gives us a close enough approximation.
+# Simplification and distances needs to be shown with the new S2 calculations
+sf::sf_use_s2(TRUE)
 eco3_simp <- eco3 %>%
-  sf::st_simplify(dTolerance = 0.1)
+  sf::st_simplify(dTolerance = 10000) %>%
+  dplyr::filter(!sf::st_is_empty(.)) %>%
+  sf::st_cast("MULTIPOLYGON")
+sf::sf_use_s2(FALSE)
 
 
 
@@ -51,15 +60,15 @@ set.seed(42)
 grd_sample <- grd %>%
   filter(1:nrow(.) %in% sample(1:nrow(.), 10000))
 
-t2 <- data.frame(
+t3 <- data.frame(
   step = c("None", 
            "Simplify polygons", 
            " + set max_dist to 25 km",
            " + run in parallel on 4 cores"),
   geographic = rep(as.numeric(NA), 4),
+  geographicS2 = rep(as.numeric(NA), 4),
   projected = rep(as.numeric(NA), 4)
 )
-
 
 
 # Time distance matrix
@@ -106,7 +115,68 @@ for (i in 2:length(times)) {
   } else {
     time <- difftime(times[[i]], times[[i-1]], units = "hours")
   }
-  t2[i - 1, 2] <- signif(time, digits = 2)
+  t3[i - 1, 2] <- signif(time, digits = 2)
+}
+
+
+
+
+
+
+
+
+
+
+# Time distance matrix
+# ==============================================================================
+
+# Turn back on S2 because the distance calculations are much faster. This will
+# give a more accurate picture of what kind of speed up will be seen in real use
+sf::sf_use_s2(TRUE)
+
+times2 <- list()
+
+# None
+Sys.time()
+times2[[1]] <- Sys.time()
+remap::redist(grd_sample, eco3, ECO3)
+
+# Simplify polygons
+Sys.time()
+times2[[2]] <- Sys.time()
+remap::redist(grd_sample, eco3_simp, ECO3)
+
+# + set max_dist to 25 km
+Sys.time()
+times2[[3]] <- Sys.time()
+for (i in 1:13) {
+  print(i)
+  remap::redist(grd[((i - 1) * 1000000 + 1):min(i * 1000000, nrow(grd)), ], 
+                eco3_simp, ECO3, max_dist = 25)
+}
+
+# + run in parallel on 4 cores
+Sys.time()
+times2[[4]] <- Sys.time()
+for (i in 1:13) {
+  print(i)
+  remap::redist(grd[((i - 1) * 1000000 + 1):min(i * 1000000, nrow(grd)), ], 
+                eco3_simp, ECO3, max_dist = 25, cores = 4)
+}
+Sys.time()
+times2[[5]] <- Sys.time()
+
+save(times2, file = "times2.RData")
+
+# Process times into geographic column of Table 2
+for (i in 2:length(times2)) {
+  if (i %in% c(2, 3)) {
+    time <- (nrow(grd) / nrow(grd_sample)) * 
+      difftime(times2[[i]], times2[[i-1]], units = "hours")
+  } else {
+    time <- difftime(times2[[i]], times2[[i-1]], units = "hours")
+  }
+  t3[i - 1, 3] <- signif(time, digits = 2)
 }
 
 
@@ -136,16 +206,16 @@ grd_sample_trans <- grd_sample %>%
 
 # Time distance matrix
 # ==============================================================================
-times2 <- list()
+times3 <- list()
 
 # None
 Sys.time()
-times2[[1]] <- Sys.time()
+times3[[1]] <- Sys.time()
 remap::redist(grd_sample_trans, eco3_trans, ECO3)
 
 # Simplify polygons
 Sys.time()
-times2[[2]] <- Sys.time()
+times3[[2]] <- Sys.time()
 for (i in 1:13) {
   print(i)
   remap::redist(grd_trans[((i - 1) * 1000000 + 1):min(i * 1000000, nrow(grd_trans)), ], 
@@ -154,7 +224,7 @@ for (i in 1:13) {
 
 # + set max_dist to 25 km
 Sys.time()
-times2[[3]] <- Sys.time()
+times3[[3]] <- Sys.time()
 for (i in 1:13) {
   print(i)
   remap::redist(grd_trans[((i - 1) * 1000000 + 1):min(i * 1000000, nrow(grd_trans)), ], 
@@ -163,36 +233,26 @@ for (i in 1:13) {
 
 # + run in parallel on 4 cores
 Sys.time()
-times2[[4]] <- Sys.time()
+times3[[4]] <- Sys.time()
 for (i in 1:13) {
   print(i)
   remap::redist(grd_trans[((i - 1) * 1000000 + 1):min(i * 1000000, nrow(grd_trans)), ], 
                 eco3_simp_trans, ECO3, max_dist = 25, cores = 4)
 }
 Sys.time()
-times2[[5]] <- Sys.time()
+times3[[5]] <- Sys.time()
 
-save(times2, file = "times2.RData")
-
-# Process times into geographic column of Table 2
-for (i in 4:length(times2)) {
-  if (i == 2) {
-    print((nrow(grd) / nrow(grd_sample)) * difftime(times2[[i]], times2[[i-1]], units = "hours"))
-  } else {
-    print(difftime(times2[[i]], times2[[i-1]], units = "hours"))
-  }
-}
-
+save(times3, file = "times3.RData")
 
 # Process times into projected column of Table 2
-for (i in 2:length(times2)) {
-  if (i %in% c(2, 3)) {
+for (i in 2:length(times3)) {
+  if (i == 2) {
     time <- (nrow(grd) / nrow(grd_sample)) * 
-      difftime(times2[[i]], times2[[i-1]], units = "hours")
+      difftime(times3[[i]], times3[[i-1]], units = "hours")
   } else {
-    time <- difftime(times2[[i]], times2[[i-1]], units = "hours")
+    time <- difftime(times3[[i]], times3[[i-1]], units = "hours")
   }
-  t2[i - 1, 3] <- signif(time, digits = 2)
+  t3[i - 1, 4] <- signif(time, digits = 2)
 }
 
 
