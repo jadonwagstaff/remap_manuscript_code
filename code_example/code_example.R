@@ -2,6 +2,7 @@ library(tidyverse)
 library(sf)
 library(mgcv)
 library(automap)
+library(gstat)
 library(remap)
 
 
@@ -21,7 +22,7 @@ eco3_dist <- redist(loads, regions = eco3_simp, region_id = ECO3, progress = TRU
 
 
 
-lmod <- remap(loads, 
+lmod <- remap(loads,
               regions = eco3_simp, region_id = ECO3,
               buffer = 50, min_n = 150,
               distances = eco3_dist,
@@ -30,7 +31,7 @@ lmod <- remap(loads,
               progress = TRUE)
 
 
-gm <- remap(loads, 
+gm <- remap(loads,
              regions = eco3_simp, region_id = ECO3,
              buffer = 50, min_n = 150,
              distances = eco3_dist,
@@ -55,30 +56,36 @@ head(gm$regions, 3)
 # ==============================================================================
 krig <- function(data, fml) {
   data <- data %>%
-    sf::st_transform("+proj=laea +x_0=0 +y_0=0 +lon_0=-100 +lat_0=45") %>%
+    sf::st_transform(sf::st_crs("+proj=laea +x_0=0 +y_0=0
+                                +lon_0=-100 +lat_0=45")) %>%
     sf::as_Spatial()
-  
+
   out <- list(data = data, fml = fml)
   class(out) <- "krig"
-  
+
   return(out)
 }
 
 predict.krig <- function(object, data) {
   if (nrow(data) != 0) {
     data <- data %>%
-      sf::st_transform("+proj=laea +x_0=0 +y_0=0 +lon_0=-100 +lat_0=45") %>%
+      sf::st_transform(sf::st_crs("+proj=laea +x_0=0 +y_0=0
+                                  +lon_0=-100 +lat_0=45")) %>%
       sf::as_Spatial()
-    
-    k <- automap::autoKrige(object$fml, input_data = object$data, 
-                            new_data = data, model = "Sph", debug.level = 0)
-    
-    return(k$krige_output$var1.pred)
+
+    variogram_object <- automap::autofitVariogram(object$fml, object$data,
+                                                  model = "Sph")
+
+    k <- gstat::krige(object$fml, object$data,
+                      data, variogram_object$var_model,
+                      debug.level = 0)
+
+    return(k$var1.pred)
   }
   return(NULL)
 }
 
-kg <- remap(loads, 
+kg <- remap(loads,
             regions = eco3_simp, region_id = ECO3,
             buffer = 50, min_n = 150,
             distances = eco3_dist,
@@ -108,7 +115,7 @@ gm_preds[gm_preds < 0.1] <- 0.1
 
 
 ggplot(cont_us) +
-  geom_tile(data = grd %>% dplyr::mutate(EVENT50 = gm_preds), 
+  geom_tile(data = grd %>% dplyr::mutate(EVENT50 = gm_preds),
             aes(x = LONGITUDE, y = LATITUDE, fill = EVENT50)) +
   geom_sf(fill = NA, color = NA) +
   scale_fill_viridis_c(option = "inferno",
@@ -124,14 +131,14 @@ utsp2011 <- utapr1 %>%
   dplyr::filter(YEAR == 2011) %>%
   dplyr::mutate(WESD = WESD + 1)
 
-utlmod <- remap(utsp2011, 
+utlmod <- remap(utsp2011,
                 regions = utws, region_id = HUC2,
                 buffer = 20, min_n = 30,
                 model_function = stats::lm,
                 formula = log(WESD) ~ ELEVATION,
                 progress = TRUE)
 
-utgm <- remap(utsp2011, 
+utgm <- remap(utsp2011,
               regions = utws, region_id = HUC2,
               buffer = 20, min_n = 30,
               model_function = mgcv::gam,
@@ -140,7 +147,7 @@ utgm <- remap(utsp2011,
               family = gaussian,
               progress = TRUE)
 
-utkg <- remap(utsp2011, 
+utkg <- remap(utsp2011,
               regions = utws, region_id = HUC2,
               buffer = 20, min_n = 30,
               model_function = krig,
