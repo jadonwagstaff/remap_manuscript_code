@@ -92,25 +92,24 @@ krig <- function(data, formula) {
 }
 
 predict.krig <- function(object, data) {
-  if (nrow(data) != 0) {
-    data <- data %>%
-      sf::st_transform(projection) %>%
-      sf::as_Spatial()
-
-    variogram_object <- automap::autofitVariogram(
-      formula = object$formula,
-      input_data = object$data,
-      model = "Sph")
-
-    k <- gstat::krige(formula = object$formula,
-                      locations = object$data,
-                      newdata = data,
-                      model = variogram_object$var_model,
-                      debug.level = 0)
-
-    return(k$var1.pred)
-  }
-  return(NULL)
+  if (nrow(data) == 0) return(NULL)
+  
+  data <- data %>%
+    sf::st_transform(projection) %>%
+    sf::as_Spatial()
+  
+  variogram_object <- automap::autofitVariogram(
+    formula = object$formula,
+    input_data = object$data,
+    model = "Sph")
+  
+  k <- gstat::krige(formula = object$formula,
+                    locations = object$data,
+                    newdata = data,
+                    model = variogram_object$var_model,
+                    debug.level = 0)
+  
+  return(k$var1.pred)
 }
 
 kg <- remap(loads,
