@@ -13,6 +13,7 @@ RUN R -e "install.packages('sf', dependencies = TRUE, repos = 'http://cran.rstud
 RUN R -e "install.packages('raster', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
 RUN R -e "install.packages('maps', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
 RUN R -e "install.packages('mgcv', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
+RUN R -e "install.packages('gstat', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
 RUN R -e "install.packages('automap', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
 RUN R -e "install.packages('remap', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
 RUN R -e "install.packages('gridExtra', dependencies = TRUE, repos = 'http://cran.rstudio.com/')"
@@ -22,10 +23,6 @@ RUN R -e "install.packages('nngeo', dependencies = TRUE, repos = 'http://cran.rs
 RUN mkdir remap_manuscript_code
 RUN cd remap_manuscript_code
 
-ADD tables remap_manuscript_code/tables
-ADD figures remap_manuscript_code/figures
-ADD data remap_manuscript_code/data
-ADD code_example remap_manuscript_code/code_example
-COPY Dockerfile remap_manuscript_code
-COPY LICENSE.md remap_manuscript_code
-COPY README.md remap_manuscript_code
+ADD replication_code replication_code
+COPY Dockerfile replication_code/Dockerfile
+COPY LICENSE.md replication_code/LICENSE.md
