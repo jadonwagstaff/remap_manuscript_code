@@ -49,7 +49,7 @@ eco3 <- sf::read_sf("data/NA_CEC_Eco_Level3/NA_CEC_Eco_Level3.shp") %>%
 # throws a warning about true assumption that lon/lat variables are assumed
 # to be planar
 grd <- raster::brick("data/us_elevation_grid")
-
+grd <- readAll(grd)
 
 utapr1 <- read_csv("data/ut_apr1_snow_pack.csv") %>%
   filter(YEAR <= 2015, YEAR >= 1986) %>%
@@ -69,10 +69,10 @@ ut <- maps::map("state", plot = FALSE, fill = TRUE) %>%
   filter(ID == "utah")
 
 utws <- rbind(
-  sf::st_read("../data/watersheds/WBD_14_HU2_Shape/WBDHU4.shp"),
-  sf::st_read("../data/watersheds/WBD_15_HU2_Shape/WBDHU4.shp"),
-  sf::st_read("../data/watersheds/WBD_16_HU2_Shape/WBDHU4.shp"),
-  sf::st_read("../data/watersheds/WBD_17_HU2_Shape/WBDHU4.shp")
+  sf::st_read("data/watersheds/WBD_14_HU2_Shape/WBDHU4.shp"),
+  sf::st_read("data/watersheds/WBD_15_HU2_Shape/WBDHU4.shp"),
+  sf::st_read("data/watersheds/WBD_16_HU2_Shape/WBDHU4.shp"),
+  sf::st_read("data/watersheds/WBD_17_HU2_Shape/WBDHU4.shp")
 ) %>%
   sf::st_transform(4326) %>%
   sf::st_intersection(sf::st_buffer(ut, 1.2)) %>%

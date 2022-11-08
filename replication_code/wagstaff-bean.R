@@ -513,13 +513,13 @@ full_large <- ggplot(sf::st_intersection(eco3, cont_us)) +
         plot.title = element_text(hjust = 0.5))
 
 
-simp_small <- ggplot(eco3_simp) +
+simp_small <- ggplot(sf::st_intersection(eco3_simp, cont_us)) +
   geom_sf() +
   coord_sf(xlim = c(-118, -112), ylim = c(43, 47)) +
   theme_void() +
   theme(panel.border = element_rect(colour = "brown", fill=NA, size=2))
 
-simp_large <- ggplot(eco3_simp) +
+simp_large <- ggplot(sf::st_intersection(eco3_simp, cont_us)) +
   geom_sf() +
   coord_sf(xlim = c(-150, -67), ylim = c(22, 50)) +
   geom_segment(x = -140.75, xend = -138.2, y = 27.1, yend = 27.1, size = 1) +
